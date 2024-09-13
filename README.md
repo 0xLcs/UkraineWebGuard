@@ -45,6 +45,51 @@ The script was developed not only for Ukraine but for any country, as it allows 
 python3 wpukrainewebguard.py --domain au --keyword university
 ```
 
+### Using on Kali or Parrot OS 
+If you're using **Kali Linux**  or **Parrot OS** , there's no need to install WPScan manually, as it comes pre-installed with these distributions. You can skip the WPScan installation step and proceed directly with running the script.
+Here’s how to confirm WPScan is installed:
+ 
+1. Open a terminal and check the WPScan version:
+
+
+```Copiar código
+wpscan --version
+```
+ 
+2. If WPScan is installed correctly, you should see the version number. You can now proceed with running the script without additional setup.
+
+### Installation 
+Before running the script, make sure to install all the necessary dependencies. You can install them using `pip` by running:
+
+```Copiar código
+pip install -r requirements.txt
+```
+
+### Requirements 
+Create a `requirements.txt` file with the following content:
+
+```Copiar código
+requests
+beautifulsoup4
+tqdm
+colorama
+smtplib
+```
+
+These are the main Python libraries needed for the script:
+ 
+- **requests** : For sending HTTP requests to fetch website data.
+ 
+- **beautifulsoup4** : For parsing and extracting information from HTML.
+ 
+- **tqdm** : For progress bars during processing.
+ 
+- **colorama** : For colored terminal output.
+ 
+- **smtplib** : For sending emails using SMTP.
+
+After setting up these requirements, you will be ready to run the script.
+
 ## Important: 
  
 - **Avoid Using Gmail** : Use a custom email provider for sending reports, as Google blocks automated email sending from Gmail.
