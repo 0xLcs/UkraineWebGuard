@@ -35,10 +35,6 @@
  
 3. Run the script by providing a domain and keyword:
 
-```Copiar código
-python3 wpukrainewebguard.py --domain au --keyword university
-```
-
 ### Example Command: 
 
 
