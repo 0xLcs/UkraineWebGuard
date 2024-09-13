@@ -58,37 +58,16 @@ wpscan --version
  
 2. If WPScan is installed correctly, you should see the version number. You can now proceed with running the script without additional setup.
 
-### Installation 
-Before running the script, make sure to install all the necessary dependencies. You can install them using `pip` by running:
+### Requirements 
+
+For Python dependencies, run:
+
 
 ```Copiar código
 pip install -r requirements.txt
 ```
+Now you're ready to run the script using the pre-installed WPScan on **Kali Linux**  or **Parrot OS** !
 
-### Requirements 
-Create a `requirements.txt` file with the following content:
-
-```Copiar código
-requests
-beautifulsoup4
-tqdm
-colorama
-smtplib
-```
-
-These are the main Python libraries needed for the script:
- 
-- **requests** : For sending HTTP requests to fetch website data.
- 
-- **beautifulsoup4** : For parsing and extracting information from HTML.
- 
-- **tqdm** : For progress bars during processing.
- 
-- **colorama** : For colored terminal output.
- 
-- **smtplib** : For sending emails using SMTP.
-
-After setting up these requirements, you will be ready to run the script.
 
 ## Important: 
  
