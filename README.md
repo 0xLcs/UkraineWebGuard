@@ -34,7 +34,7 @@ The script was developed not only for Ukraine but for any country, as it allows 
 
 1. Clone this repository.
 
-2. Edit the Python Script with your credetials and token(s)
+2.  Update the Python script with your credentials and WPScan token(s).
  
 3. Run the script by providing a domain and keyword:
 
