@@ -26,7 +26,7 @@ The script was developed not only for Ukraine but for any country, as it allows 
  
 - **WPScan** : Make sure WPScan is installed and configured correctly.
  
-- **Email Setup** : The email used for sending reports should not be a Gmail account due to Google's security policies. You should use a custom email server (like `email-ssl.com.br`).
+- **Email Setup** : The email used for sending reports should not be a Gmail account due to Google's security policies. You should use a custom email server (like `smtp.email.com`).
  
 - **Proxychains (Optional)** : To avoid Google blocking your requests, you can use proxies or Tor through Proxychains.
 
@@ -34,7 +34,7 @@ The script was developed not only for Ukraine but for any country, as it allows 
 
 1. Clone this repository.
 
-2. Set up your environment variables, including your email and password in the code.
+2. Edit the Python Script with your credetials and token(s)
  
 3. Run the script by providing a domain and keyword:
 
@@ -44,6 +44,31 @@ The script was developed not only for Ukraine but for any country, as it allows 
 ```Copiar código
 python3 wpukrainewebguard.py --domain au --keyword university
 ```
+
+1. **WPScan Tokens** :
+You must insert one or more valid WPScan API tokens to scan WordPress sites for vulnerabilities. These can be obtained by creating an account on the [WPScan website](https://wpscan.com/) . 
+  - Edit the `TOKENS` list in the script by replacing `'PUT_YOUR_TOKENS_HERE'` with your actual tokens.
+
+Example:
+
+
+```Copiar código
+TOKENS = [
+    'your_token_1',
+    'your_token_2',
+    'your_token_3'
+]
+```
+ 
+2. **Email Configuration** :
+The script uses an email to send vulnerability reports. You must configure your email, password, SMTP server, and port. 
+  - Replace `'your-email@example.com'` with your actual email address.
+ 
+  - Replace `'your-password'` with your email password.
+ 
+  - Replace `'your-smtp-server.com'` with the SMTP server for your email provider (e.g., `smtp.email.com`).
+ 
+  - Replace `587` with the correct port for your SMTP server (587 is common for TLS, 465 for SSL).
 
 ### Using on Kali or Parrot OS 
 If you're using **Kali Linux**  or **Parrot OS** , there's no need to install WPScan manually, as it comes pre-installed with these distributions. You can skip the WPScan installation step and proceed directly with running the script.
@@ -67,7 +92,6 @@ For Python dependencies, run:
 pip install -r requirements.txt
 ```
 Now you're ready to run the script using the pre-installed WPScan on **Kali Linux**  or **Parrot OS** !
-
 
 ## Important: 
  
