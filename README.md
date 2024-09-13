@@ -1,6 +1,6 @@
 **WP Ukraine WebGuard**  is an automation tool designed to search websites through Google, collect emails from those sites, scan for WordPress vulnerabilities using WPScan, and send email alerts to site administrators if vulnerabilities are found.
 
-The script was developed not only for Ukraine but for any website, as it allows you to scan and secure any domain by simply specifying it during execution. It is crucial to address vulnerabilities in websites because flaws such as Remote Code Execution (RCE), Cross-Site Scripting (XSS), and others can lead to critical services becoming unavailable, which is particularly devastating in a state of war. Moreover, a simple entry point for an attacker through an insecure website can grant lateral escalation into other devices and systems, including medical equipment, potentially disabling their operation and threatening lives.
+The script was developed not only for Ukraine but for any country, as it allows you to scan and secure any domain by simply specifying it during execution. It is crucial to address vulnerabilities in websites because flaws such as Remote Code Execution (RCE), Cross-Site Scripting (XSS), and others can lead to critical services becoming unavailable, which is particularly devastating in a state of war. Moreover, a simple entry point for an attacker through an insecure website can grant lateral escalation into other devices and systems, including medical equipment, potentially disabling their operation and threatening lives.
 
 ## Main Features: 
  
