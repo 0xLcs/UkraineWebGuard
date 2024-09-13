@@ -45,6 +45,10 @@ The script was developed not only for Ukraine but for any country, as it allows 
 python3 wpukrainewebguard.py --domain au --keyword university
 ```
 
+### Configuration Instructions 
+
+Before running the script, you will need to configure a few things, such as WPScan tokens, your email, and SMTP server settings. Follow these steps:
+
 1. **WPScan Tokens** :
 You must insert one or more valid WPScan API tokens to scan WordPress sites for vulnerabilities. These can be obtained by creating an account on the [WPScan website](https://wpscan.com/) . 
   - Edit the `TOKENS` list in the script by replacing `'PUT_YOUR_TOKENS_HERE'` with your actual tokens.
