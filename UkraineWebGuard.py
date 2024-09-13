@@ -14,6 +14,17 @@ from email.mime.base import MIMEBase
 from email import encoders
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 
+print('\n' * 3)
+print("  _    _ _              _             __          __  _      _____                     _ ")
+print(" | |  | | |            (_)            \ \        / / | |    / ____|                   | |")
+print(" | |  | | | ___ __ __ _ _ _ __   ___   \ \  /\  / /__| |__ | |  __ _   _  __ _ _ __ __| |")
+print(" | |  | | |/ / '__/ _` | | '_ \ / _ \   \ \/  \/ / _ \ '_ \| | |_ | | | |/ _` | '__/ _` |")
+print(" | |__| |   <| | | (_| | | | | |  __/    \  /\  /  __/ |_) | |__| | |_| | (_| | | | (_| |")
+print("  \____/|_|\_\_|  \__,_|_|_| |_|\___|     \/  \/ \___|_.__/ \_____|\__,_|\__,_|_|  \__,_|")
+print('\n' * 3)
+print('by Lucas F. Morato')
+print('Version 2.0\n')
+
 # Replace these tokens with your actual WPScan API tokens (Get in https://wpscan.com/pricing/)
 TOKENS = [
     'PUT_YOUR_TOKENS_HERE',
