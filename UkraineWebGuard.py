@@ -4,7 +4,7 @@ import argparse
 import subprocess
 import os
 import re
-from colorama import Fore, Style
+import logging
 from tqdm import tqdm
 import time
 import smtplib
@@ -13,6 +13,18 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from email.utils import parseaddr
+import json
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Change to DEBUG for more detailed output
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 print('\n' * 3)
 print("  _    _ _              _             __          __  _      _____                     _ ")
@@ -32,10 +44,26 @@ TOKENS = [
     'PUT_YOUR_TOKENS_HERE'
 ]
 
-# Limit the scraping time per website to 60 seconds
+# Time limit for scraping in seconds
 SCRAPING_TIMEOUT = 60
 
-# Function to perform Google search and collect URLs based on the domain and keyword
+# Email pattern and invalid extensions
+EMAIL_PATTERN = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+INVALID_EMAIL_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp']
+
+def is_valid_email(email):
+    """Check if an email is valid and does not have an invalid extension."""
+    email_address = parseaddr(email)[1]
+    if not email_address:
+        return False
+    local_part, _, domain_part = email_address.partition('@')
+    if not domain_part:
+        return False
+    for ext in INVALID_EMAIL_EXTENSIONS:
+        if domain_part.lower().endswith(ext):
+            return False
+    return True
+
 def search_google(domain, keyword):
     unique_urls = []
     for page in range(2, 4):
@@ -44,7 +72,7 @@ def search_google(domain, keyword):
         soup = BeautifulSoup(response.text, 'html.parser')
         search_results = soup.find_all('a')
         for result in search_results:
-            url = result['href']
+            url = result.get('href', '')
             if url.startswith('/url?q='):
                 url = url[7:]
                 url = url.split('&')[0]
@@ -55,19 +83,25 @@ def search_google(domain, keyword):
                     unique_urls.append(url)
         time.sleep(2)
 
-    print(Fore.GREEN + "\nScanning websites..." + Style.RESET_ALL)
+    print(Fore.GREEN + "\nScanning websites...\n" + Style.RESET_ALL)
     emails_by_url = {}
 
-    # Using ThreadPoolExecutor to parallelize the scraping process
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_url = {executor.submit(scrape_site, url): url for url in unique_urls}
-        
-        for future in tqdm(as_completed(future_to_url), total=len(future_to_url), desc="Progress", unit="website"):
+
+        for future in tqdm(as_completed(future_to_url), total=len(future_to_url), desc=Fore.YELLOW + "Progress" + Style.RESET_ALL, unit="website"):
             url = future_to_url[future]
             try:
-                emails = future.result(timeout=SCRAPING_TIMEOUT)  # Limits scraping time per site
+                emails = future.result(timeout=SCRAPING_TIMEOUT)
                 if emails:
-                    emails_by_url[url] = emails
+                    valid_emails = list(set([email for email in emails if is_valid_email(email)]))
+                    if valid_emails:
+                        emails_by_url[url] = valid_emails
+                        print(Fore.BLUE + f"\nEmails found for {url}:\n" + Style.RESET_ALL)
+                        for email in valid_emails:
+                            print(Fore.CYAN + email + Style.RESET_ALL)
+                else:
+                    print(Fore.YELLOW + f"\nNo emails found for {url}." + Style.RESET_ALL)
             except TimeoutError:
                 print(Fore.RED + f"\nScraping timed out for website {url}, skipping..." + Style.RESET_ALL)
             except Exception as e:
@@ -75,28 +109,20 @@ def search_google(domain, keyword):
 
     return emails_by_url
 
-# Function to scrape emails from a given site
 def scrape_site(site_url):
-    if not site_url.startswith("http"):
-        return []
-    
-    site_name = site_url.split('//')[1].split('/')[0]
-    output_file = f'{site_name}.txt'
-    
-    with open(output_file, 'w') as file:
-        subprocess.run(['curl', '-s', site_url], stdout=file)
-    
     emails = []
-    with open(output_file, 'r', encoding='utf-8', errors='ignore') as file:
-        file_content = file.read()
-        emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', file_content)
-        emails = [email for email in emails if len(email) > 14 and not email.startswith('cached@')]
-    
-    os.remove(output_file)
-    
-    return emails
+    if not site_url.startswith("http"):
+        return emails
+    try:
+        logging.info(f"Scraping site: {site_url}")
+        response = requests.get(site_url, timeout=10)
+        response.raise_for_status()
+        emails = EMAIL_PATTERN.findall(response.text)
+        return emails
+    except requests.RequestException as e:
+        logging.error(f"Failed to scrape {site_url}: {e}")
+        return emails
 
-# Function to run WPScan for a given site
 def run_wpscan(site_url, output_file, token):
     subprocess.run([
         'wpscan',
@@ -110,28 +136,50 @@ def run_wpscan(site_url, output_file, token):
         '--request-timeout', '30',
         '--max-threads', '10',
         '--enumerate', 'p',
+        '--format', 'json',
         '-o', output_file
     ])
 
-# Function to scan a site, check for vulnerabilities, and send an email if vulnerabilities are found
+def parse_wpscan_output(output_file):
+    vulnerabilities = []
+    try:
+        with open(output_file, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        for plugin in data.get('plugins', {}).values():
+            for vuln in plugin.get('vulnerabilities', []):
+                vulnerabilities.append({
+                    'title': vuln.get('title'),
+                    'severity': vuln.get('cvss', {}).get('score', 'Unknown'),
+                    'references': vuln.get('references', {})
+                })
+    except json.JSONDecodeError as e:
+        logging.error(f"Error parsing WPScan output JSON: {e}")
+    return vulnerabilities
+
 def scan_and_email(site_url, emails, token):
     site_name = site_url.split('//')[1].split('/')[0]
-    output_file = f'{site_name}_report.txt'
-    print(Fore.GREEN + f"\nRunning WPScan on website {site_url}..." + Style.RESET_ALL)
+    output_file = f'{site_name}_report.json'
+    print(Fore.GREEN + f"\nRunning WPScan on website {site_url}...\n" + Style.RESET_ALL)
     run_wpscan(site_url, output_file, token)
     if os.path.exists(output_file):
-        with open(output_file, 'r', encoding='utf-8', errors='ignore') as file:
-            file_content = file.read()
-            if any(vuln in file_content for vuln in ['vulnerability', 'vulnerabilities', 'Directory listing is enabled']):
-                for email in emails:
-                    send_email(site_url, email, output_file)
-            else:
-                print(Fore.RED + f"No vulnerabilities found for website {site_url}. Skipping..." + Style.RESET_ALL)
+        vulnerabilities = parse_wpscan_output(output_file)
+        if vulnerabilities:
+            print(Fore.RED + f"Vulnerabilities found on {site_url}!\n" + Style.RESET_ALL)
+            for email in emails:
+                send_email(site_url, email, output_file, vulnerabilities)
+            print(Fore.GREEN + f"Emails sent for website {site_url}.\n" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + f"No vulnerabilities found for website {site_url}. Skipping email.\n" + Style.RESET_ALL)
+        # Remove the output file
+        os.remove(output_file)
 
-# Function to send email with the vulnerability report
-def send_email(site_url, recipient_email, output_file):
-    sender_email = 'your-email@example.com'  # Replace with your email
-    sender_password = 'your-password'  # Replace with your email password
+def send_email(site_url, recipient_email, output_file, vulnerabilities):
+    # Insert your email credentials here
+    sender_email = 'your-email@example.com'
+    sender_password = 'your-password'
+    smtp_server = 'your-smtp-server.com'
+    smtp_port = 587  # Use 465 if your SMTP server uses SSL
+
     subject = 'Potential Vulnerabilities Identified on Your Website'
 
     msg = MIMEMultipart()
@@ -139,13 +187,14 @@ def send_email(site_url, recipient_email, output_file):
     msg['To'] = recipient_email
     msg['Subject'] = subject
 
+    # Build the email body
     body = f"""Dear Website Owner,
 
-I hope this message finds you well. As part of my efforts to enhance online security, I have identified some potential vulnerabilities on your website {site_url}. 
+I hope this message finds you well. As part of my efforts to enhance online security, I have identified some potential vulnerabilities on your website {site_url}.
 
 Attached to this email is a report that contains the vulnerabilities found during the scan. My intention is to provide you with valuable insights that can help protect your website and users from possible cyber threats.
 
-Please note that this analysis was conducted using publicly available information, and all findings were obtained legally. 
+Please note that this analysis was conducted using publicly available information, and all findings were obtained legally.
 
 If you would like assistance in resolving these issues or have any questions, feel free to reply to this email.
 
@@ -154,24 +203,31 @@ Security Researcher
 """
     msg.attach(MIMEText(body, 'plain'))
 
+    # Attach the report
     with open(output_file, 'rb') as attachment:
         part = MIMEBase('application', 'octet-stream')
         part.set_payload(attachment.read())
         encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f"attachment; filename= {output_file}")
+        part.add_header('Content-Disposition', f"attachment; filename={output_file}")
         msg.attach(part)
-    
-    try:
-        server = smtplib.SMTP('your-smtp-server.com', 587)  # Replace with your SMTP server
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, recipient_email, msg.as_string())
-        server.quit()
-        print(f"Email sent successfully to {recipient_email} for website {site_url}")
-    except smtplib.SMTPException as e:
-        print(f"Failed to send email to {recipient_email} for website {site_url}. Error: {str(e)}")
 
-# Main function to parse arguments and initiate the scanning and email process
+    try:
+        # Secure SMTP connection
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            # If using SSL on port 465, use smtplib.SMTP_SSL
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, recipient_email, msg.as_string())
+        print(Fore.GREEN + f"Email successfully sent to {recipient_email} for website {site_url}\n" + Style.RESET_ALL)
+    except smtplib.SMTPException as e:
+        print(Fore.RED + f"Failed to send email to {recipient_email} for website {site_url}. Error: {str(e)}\n" + Style.RESET_ALL)
+
+def get_next_token():
+    get_next_token.counter = (get_next_token.counter + 1) % len(TOKENS)
+    return TOKENS[get_next_token.counter]
+
+get_next_token.counter = -1  # Initialize the counter
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Scan websites for vulnerabilities.')
     parser.add_argument('-d', '--domain', required=True, help='The domain to scan')
@@ -182,5 +238,5 @@ if __name__ == "__main__":
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         for site_url, emails in emails_by_url.items():
-            token = TOKENS[0]  # Using the first token for simplicity, you can rotate them
+            token = get_next_token()
             executor.submit(scan_and_email, site_url, emails, token)
